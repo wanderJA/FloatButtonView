@@ -5,11 +5,13 @@ import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.Toast
-import java.util.HashMap
+import kotlinx.android.synthetic.main.float_button_layout.view.*
+import java.util.*
 
 /**
  * author wander
@@ -21,7 +23,10 @@ class FloatButtonHelper : Application.ActivityLifecycleCallbacks {
     }
 
     override fun onActivityResumed(activity: Activity) {
-        FloatBackView(activity).attach(floatViewFactory)
+        val floatBackView = activityMap[activity]
+        if (floatBackView == null && FloatBackView.needShow) {
+            FloatBackView(activity).attach(floatViewFactory)
+        }
         activityMap[activity]?.onResume()
     }
 
@@ -29,6 +34,7 @@ class FloatButtonHelper : Application.ActivityLifecycleCallbacks {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
+        activityMap.remove(activity)
     }
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle?) {
@@ -43,7 +49,8 @@ class FloatButtonHelper : Application.ActivityLifecycleCallbacks {
     }
 
     companion object {
-        val activityMap = HashMap<Context, FloatBackView>()
+        val activityMap = WeakHashMap<Context, FloatBackView>()
+        const val appName = "com.qiyi.video.reader"
     }
 
     fun initFloatButton(activity: Activity) {
@@ -55,10 +62,15 @@ class FloatButtonHelper : Application.ActivityLifecycleCallbacks {
 
     var floatViewFactory: FloatViewFactory = object : FloatViewFactory {
         override fun createView(context: Context): View {
-            return ImageView(context).apply {
-                setImageResource(R.drawable.abc_ic_arrow_drop_right_black_24dp)
-                layoutParams = ViewGroup.LayoutParams(300, 300)
+            val view = LayoutInflater.from(context).inflate(R.layout.float_button_layout, null)
+            view.appName.text = Utils.getAppName(appName)
+            val appIcon = Utils.getAppIcon(appName)
+            if (appIcon != null) {
+                view.appIcon.setImageDrawable(appIcon)
+                view.appIcon.visibility = View.VISIBLE
             }
+
+            return view
         }
 
         override fun onClick(v: View) {
@@ -66,11 +78,17 @@ class FloatButtonHelper : Application.ActivityLifecycleCallbacks {
             Toast.makeText(context, "button", Toast.LENGTH_SHORT).show()
 //                    val intent = Intent(Intent.ACTION_VIEW)
 //                    intent.component = ComponentName("com.qiyi.video.reader", "com.qiyi.video.reader.activity.FlashActivity")
-            context.startActivity(context.packageManager.getLaunchIntentForPackage("com.qiyi.video.reader"))
+            if (Utils.isAppInstalled(appName)) {
+                context.startActivity(context.packageManager.getLaunchIntentForPackage(appName))
+            } else {
+                FloatBackView.needShow = false
+                activityMap[v.context]?.onResume()
+            }
+
         }
     }
 
-    interface FloatViewFactory :View.OnClickListener{
+    interface FloatViewFactory : View.OnClickListener {
         fun createView(context: Context): View
     }
 }

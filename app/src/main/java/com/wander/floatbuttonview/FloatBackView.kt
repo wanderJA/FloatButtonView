@@ -1,6 +1,5 @@
 package com.wander.floatbuttonview
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.graphics.Color
@@ -24,7 +23,7 @@ class FloatBackView @JvmOverloads constructor(context: Context, attrs: Attribute
     private var gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onFling(e1: MotionEvent?, e2: MotionEvent?, velocityX: Float, velocityY: Float): Boolean {
             Log.d(tag, "velocityX:$velocityX")
-            if (velocityX > 500) {
+            if (velocityX < -400) {
                 this@FloatBackView.hide()
             }
             return true
@@ -41,7 +40,9 @@ class FloatBackView @JvmOverloads constructor(context: Context, attrs: Attribute
         /**
          * 记录位置
          */
-        var orgTopMargin = 1000
+        var currentTopMargin = 1000
+
+        var needShow = true
     }
 
     init {
@@ -52,7 +53,7 @@ class FloatBackView @JvmOverloads constructor(context: Context, attrs: Attribute
     override fun onFinishInflate() {
         super.onFinishInflate()
         val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
-        params.topMargin = orgTopMargin
+        params.topMargin = currentTopMargin
 
     }
 
@@ -121,11 +122,13 @@ class FloatBackView @JvmOverloads constructor(context: Context, attrs: Attribute
         if (params.topMargin + height > (parent as View).height) {
             params.topMargin = (parent as View).height - height
         }
+        currentTopMargin = params.topMargin
         requestLayout()
     }
 
     private fun hide() {
         visibility = View.GONE
+        needShow =false
         Log.d(tag, "close")
 
     }
@@ -141,15 +144,20 @@ class FloatBackView @JvmOverloads constructor(context: Context, attrs: Attribute
         addView(view)
         setOnClickListener(floatViewFactory)
         val flp = FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT)
-        var content = decorView.findViewById(android.R.id.content) as FrameLayout
-        content.addView(this,  flp)
+        val content = decorView.findViewById(android.R.id.content) as FrameLayout
+        content.addView(this, flp)
         FloatButtonHelper.activityMap[context] = this
     }
 
     fun onResume() {
-        val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
-        params.topMargin = orgTopMargin
-        bringToFront()
+        if (needShow) {
+            val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+            params.topMargin = currentTopMargin
+            bringToFront()
+        } else {
+            hide()
+            FloatButtonHelper.activityMap.remove(context)
+        }
     }
 
 
